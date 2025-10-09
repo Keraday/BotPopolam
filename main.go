@@ -20,7 +20,7 @@ const apiURL = "https://api.telegram.org/bot"
 var token = os.Getenv("TELEGRAM_BOT_TOKEN")
 var baseURL = apiURL + token
 
-// Глобальное хранилище сессий (в реальном проекте — БД)
+// хранилище сессий
 var (
 	sessions = make(map[int64]*Session)
 	mu       sync.RWMutex
@@ -177,12 +177,15 @@ func handleMessage(msg *Message) {
 			Username: username,
 			Amount:   amount,
 		})
-		var totalAmount float64
+		var totalAmountU float64
 		for _, sum := range session.Expenses {
-			totalAmount += sum.Amount
+			if sum.UserID == userID {
+				totalAmountU += sum.Amount
+			}
+
 		}
 
-		sendMessage(chatID, fmt.Sprintf("✅ Добавлено: %s потратил(а) %.2f, всего: %.2f", username, amount, totalAmount))
+		sendMessage(chatID, fmt.Sprintf("✅ Добавлено: %s потратил(а) %.2f, всего: %.2f", username, amount, totalAmountU))
 
 	case text == "/calc":
 		if len(session.Expenses) == 0 {
@@ -190,7 +193,7 @@ func handleMessage(msg *Message) {
 			return
 		}
 
-		// Считаем общую сумму и сколько заплатил каждый
+		// считаем общую сумму и сколько заплатил каждый
 		total := 0.0
 		paid := make(map[int64]float64)
 		for _, e := range session.Expenses {
@@ -204,13 +207,13 @@ func handleMessage(msg *Message) {
 		}
 		perPerson := total / float64(len(userIDs))
 
-		// Кто сколько должен (отрицательно = должен, положительно = переплатил)
+		// кто сколько должен (отрицательно = должен, положительно = переплатил)
 		balance := make(map[int64]float64)
 		for _, uid := range userIDs {
 			balance[uid] = paid[uid] - perPerson
 		}
 
-		// Упрощённый алгоритм расчёта переводов
+		// алгоритм расчёта переводов
 		debtors := []struct {
 			id     int64
 			amount float64
@@ -242,7 +245,7 @@ func handleMessage(msg *Message) {
 		var result strings.Builder
 		result.WriteString("🧮 Расчёт:\n\n")
 
-		// Простой greedy-алгоритм
+		// жадный-алгоритм
 		i, j := 0, 0
 		for i < len(debtors) && j < len(creditors) {
 			d := &debtors[i]
