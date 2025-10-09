@@ -177,7 +177,12 @@ func handleMessage(msg *Message) {
 			Username: username,
 			Amount:   amount,
 		})
-		sendMessage(chatID, fmt.Sprintf("✅ Добавлено: %s потратил(а) %.2f", username, amount))
+		var totalAmount float64
+		for _, sum := range session.Expenses {
+			totalAmount += sum.Amount
+		}
+
+		sendMessage(chatID, fmt.Sprintf("✅ Добавлено: %s потратил(а) %.2f, всего: %.2f", username, amount, totalAmount))
 
 	case text == "/calc":
 		if len(session.Expenses) == 0 {
